@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>MagnetometerXYZ</title>
+	<link href="SensorStyle.css" rel="stylesheet" type="text/css" />
+    <style>
+
+	body {
+	  background-color:  #99FFFF;
+	  font: 10px sans-serif;
+	  margin: 0;
+	}
+
+	path.line {
+	  fill: none;
+	  stroke: #666;
+	  stroke-width: 1.5px;
+	}
+
+	path.area {
+	  fill: #e7e7e7;
+	}
+
+	.axis {
+	  shape-rendering: crispEdges;
+	}
+
+	.x.axis line {
+	  stroke: #fff;
+	}
+
+	.x.axis .minor {
+	  stroke-opacity: .5;
+	}
+
+	.x.axis path {
+	  display: none;
+	}
+
+	.y.axis line, .y.axis path {
+	  fill: none;
+	  stroke: #000;
+	}
+
+</style>
+    <script type="text/javascript" src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script>
+
+
+d3.json("http://api.thingspeak.com/channels/62245/feed.json?days=3", function(data) {
+  var svgWidth = 1000;
+  var svgHeight = 300;
+  var padding = 50;
+  var max_d = Date.parse(data.feeds[0].created_at);
+  var min_d = Date.parse(data.feeds[0].created_at);
+  var m=Math.sqrt(data.feeds[0].field3*data.feeds[0].field3+ data.feeds[0].field4*data.feeds[0].field4+data.feeds[0].field5*data.feeds[0].field5);
+  var max_x = parseFloat(data.feeds[0].field3);
+  var min_x = parseFloat(data.feeds[0].field3);
+  var max_y = parseFloat(data.feeds[0].field4);
+  var min_y = parseFloat(data.feeds[0].field4);
+  var max_z = parseFloat(data.feeds[0].field5);
+  var min_z = parseFloat(data.feeds[0].field5);
+  var max_m = parseFloat(m);
+  var min_m = parseFloat(m);
+  var t = new Date();
+  console.log( t);
+  for (var i = 0; i < data.feeds.length; i++) {
+    var temp_d = Date.parse(data.feeds[i].created_at);
+    //console.log( Math.floor((temp_d % 86400000) / 3600000 ));
+
+    //console.log( Math.floor((t-temp_d)/86400000 ));
+    m=Math.sqrt(data.feeds[i].field3*data.feeds[i].field3+ data.feeds[i].field4*data.feeds[i].field4+data.feeds[i].field5*data.feeds[i].field5);
+	console.log(m);
+    var temp_x = parseFloat(data.feeds[i].field3);
+    var temp_y = parseFloat(data.feeds[i].field4);
+    var temp_z = parseFloat(data.feeds[i].field5);
+	var temp_m = parseFloat(m);
+    if ( temp_d >= max_d ) { max_d = temp_d; }
+    if ( temp_d <= min_d ) { min_d = temp_d; }
+    if ( temp_x >= max_x ) { max_x = temp_x; }
+    if ( temp_x <= min_x ) { min_x = temp_x; }
+    if ( temp_y >= max_y ) { max_y = temp_y; }
+    if ( temp_y <= min_y ) { min_y = temp_y; }
+    if ( temp_z >= max_z ) { max_z = temp_z; }
+    if ( temp_z <= min_z ) { min_z = temp_z; } 
+	if ( temp_m >= max_m ) { max_m = temp_m; }
+    if ( temp_m <= min_m ) { min_m = temp_m; }
+  }
+  var dmi = min_d-(max_d-min_d)*0.01;
+  var dma = max_d+(max_d-min_d)*0.01;
+  var xmi = parseFloat(min_x,10)-(max_x-min_x)*0.01;
+  var xma = parseFloat(max_x,10)+(max_x-min_x)*0.01;
+  var ymi = parseFloat(min_y,10)-(max_y-min_y)*0.01;
+  var yma = parseFloat(max_y,10)+(max_y-min_y)*0.01;
+  var zmi = parseFloat(min_z,10)-(max_z-min_z)*0.01;
+  var zma = parseFloat(max_z,10)+(max_z-min_z)*0.01;
+  var mmi = parseFloat(min_m,10)-(max_m-min_m)*0.01;
+  var mma = parseFloat(max_m,10)+(max_m-min_m)*0.01;
+  max_d = dma;
+  min_d = dmi;
+  max_x = xma;
+  min_x = xmi;
+  max_y = yma;
+  min_y = ymi;
+  max_z = zma;
+  min_z = zmi;
+  max_m = mma;
+  min_m = mmi;
+  var linearScaleD = d3.time.scale().domain([min_d,max_d]).range([padding,svgWidth-padding]);
+  var linearScaleX = d3.scale.linear().domain([max_x,min_x]).range([padding,svgHeight-padding]);
+  var linearScaleY = d3.scale.linear().domain([max_y,min_y]).range([padding,svgHeight-padding]);
+  var linearScaleZ = d3.scale.linear().domain([max_z,min_z]).range([padding,svgHeight-padding]);
+  var linearScaleM = d3.scale.linear().domain([max_m,min_m]).range([padding,svgHeight-padding]);
+  
+  var svgContainer = d3.select("#graph1").append("svg")
+                                      .attr("width", svgWidth)
+                                      .attr("height", svgHeight);
+  var circles = svgContainer.selectAll("circle")
+                            .data(data.feeds)
+                            .enter()
+                            .append("circle");//
+  var lineFunction = d3.svg.line()
+                           .x(function(d) { return linearScaleD(Date.parse(d.created_at)); })
+                           .y(function(d) { return linearScaleX(d.field3); })
+                           .interpolate("linear");
+  var lineGraph = svgContainer.append("path")
+                              .attr("d", lineFunction(data.feeds))
+                              .attr("stroke", "blue")
+                              .attr("stroke-width", 1)
+                              .attr("fill", "none");
+  var circleAttributes = circles
+                         .attr("cx", function (d) { return linearScaleD(Date.parse(d.created_at)); })
+                         .attr("cy", function (d) { return linearScaleX(d.field3); })
+                         .attr("r", 2 )
+                         .style("fill", "red" );
+  var dAxis = d3.svg.axis().scale(linearScaleD).tickFormat(d3.time.format("%I:%M"));
+  var dAxisGroup = svgContainer.append("g")
+                                .attr("transform", "translate(0," + (svgHeight-padding) + ")")
+                                .attr("class", "y axis")
+                                .call(dAxis);
+  var xAxis = d3.svg.axis().scale(linearScaleX).ticks(4).orient("left");
+  var xAxisGroup = svgContainer.append("g")
+                                .attr("transform", "translate(" + padding + ",0)")
+                                .attr("class", "y axis")
+                                .call(xAxis);
+
+  var svgContainer = d3.select("#graph2").append("svg")
+                                      .attr("width", svgWidth)
+                                      .attr("height", svgHeight);
+  var circles = svgContainer.selectAll("circle")
+                            .data(data.feeds)
+                            .enter()
+                            .append("circle");//
+  var lineFunction = d3.svg.line()
+                           .x(function(d) { return linearScaleD(Date.parse(d.created_at)); })
+                           .y(function(d) { return linearScaleY(d.field4); })
+                           .interpolate("linear");
+  var lineGraph = svgContainer.append("path")
+                              .attr("d", lineFunction(data.feeds))
+                              .attr("stroke", "blue")
+                              .attr("stroke-width", 1)
+                              .attr("fill", "none");
+  var circleAttributes = circles
+                         .attr("cx", function (d) { return linearScaleD(Date.parse(d.created_at)); })
+                         .attr("cy", function (d) { return linearScaleY(d.field4); })
+                         .attr("r", 2 )
+                         .style("fill", "red" );
+  var dAxis = d3.svg.axis().scale(linearScaleD).tickFormat(d3.time.format("%I:%M"));
+  var dAxisGroup = svgContainer.append("g")
+                                .attr("transform", "translate(0," + (svgHeight-padding) + ")")
+                                .attr("class", "y axis")
+                                .call(dAxis);
+  var yAxis = d3.svg.axis().scale(linearScaleY).ticks(4).orient("left");
+  var yAxisGroup = svgContainer.append("g")
+                                .attr("transform", "translate(" + padding + ",0)")
+                                .attr("class", "y axis")
+                                .call(yAxis);
+
+  var svgContainer = d3.select("#graph3").append("svg")
+                                      .attr("width", svgWidth)
+                                      .attr("height", svgHeight);
+  var circles = svgContainer.selectAll("circle")
+                            .data(data.feeds)
+                            .enter()
+                            .append("circle");//
+  var lineFunction = d3.svg.line()
+                           .x(function(d) { return linearScaleD(Date.parse(d.created_at)); })
+                           .y(function(d) { return linearScaleZ(d.field5); })
+                           .interpolate("linear");
+  var lineGraph = svgContainer.append("path")
+                              .attr("d", lineFunction(data.feeds))
+                              .attr("stroke", "blue")
+                              .attr("stroke-width", 1)
+                              .attr("fill", "none");
+  var circleAttributes = circles
+                         .attr("cx", function (d) { return linearScaleD(Date.parse(d.created_at)); })
+                         .attr("cy", function (d) { return linearScaleZ(d.field5); })
+                         .attr("r", 2 )
+                         .style("fill", "red" );
+  var dAxis = d3.svg.axis().scale(linearScaleD).tickFormat(d3.time.format("%I:%M"));
+  var dAxisGroup = svgContainer.append("g")
+                                .attr("transform", "translate(0," + (svgHeight-padding) + ")")
+                                .attr("class", "y axis")
+                                .call(dAxis);
+  var zAxis = d3.svg.axis().scale(linearScaleZ).ticks(4).orient("left");
+  var zAxisGroup = svgContainer.append("g")
+                                .attr("transform", "translate(" + padding + ",0)")
+                                .attr("class", "y axis")
+                                .call(zAxis);
+
+
+
+var svgContainer = d3.select("#graph4").append("svg")
+                                      .attr("width", svgWidth)
+                                      .attr("height", svgHeight);
+  var circles = svgContainer.selectAll("circle")
+                            .data(data.feeds)
+                            .enter()
+                            .append("circle");//
+  var lineFunction = d3.svg.line()
+                           .x(function(d) { return linearScaleD(Date.parse(d.created_at)); })
+                           .y(function(d) {return linearScaleM(Math.sqrt(d.field3*d.field3+d.field4*d.field4+d.field5*d.field5)); })
+                           .interpolate("linear");
+  var lineGraph = svgContainer.append("path")
+                              .attr("d", lineFunction(data.feeds))
+                              .attr("stroke", "blue")
+                              .attr("stroke-width", 1)
+                              .attr("fill", "none");
+  var circleAttributes = circles
+                         .attr("cx", function (d) { return linearScaleD(Date.parse(d.created_at)); })
+                         .attr("cy", function (d) { return linearScaleM(Math.sqrt(d.field3*d.field3+d.field4*d.field4+d.field5*d.field5)); })
+                         .attr("r", 2 )
+                         .style("fill", "red" );
+  var dAxis = d3.svg.axis().scale(linearScaleD).tickFormat(d3.time.format("%I:%M"));
+  var dAxisGroup = svgContainer.append("g")
+                                .attr("transform", "translate(0," + (svgHeight-padding) + ")")
+                                .attr("class", "y axis")
+                                .call(dAxis);
+  var mAxis = d3.svg.axis().scale(linearScaleM).ticks(4).orient("left");
+  var mAxisGroup = svgContainer.append("g")
+                                .attr("transform", "translate(" + padding + ",0)")
+                                .attr("class", "y axis")
+                                .call(mAxis);
+
+}
+
+
+
+);
+
+
+
+
+
+</script>
+</head>
+  <body>
+<div  id = "Overview">
+  <h1>    Magnetometer data from Cork  - last three days    </h1>
+  
+</div>
+ 
+
+<TABLE ALIGN="center" BORDER=2 CELLSPACING=0 CELLPADDING=0 >
+
+<TR>
+	<TD> <div id=graph1> </div> <h2> Graph1 : X coordinate</h2></TD>
+</TR>
+<TR>
+	<TD> <div id=graph2> </div><h2> Graph 2 : Y coordinate</h2></TD>
+</TR>
+<TR>
+	<TD> <div id=graph3> </div><h2> Graph 3: Z coordinate</h2></TD>
+</TR>
+<TR>
+	<TD> <div id=graph4> </div><h2> Graph4: Total Magnitude</h2></TD>
+</TR>
+</TABLE>
+
+
+
+
+
+
+  </body>
+<footer>  
+  <p>  <a href="http://www.ideb.eu.pn/" target="_top">Return to Home Page</a> <br>
+   Issues?  Please send an email to <a href="mailto:Ide_Bradley@hotmail.com"> this address</a> <p>
+</footer> 
+</html>

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Cork Amplitude Data </title>
+	<link href="SensorStyle.css" rel="stylesheet" type="text/css" />
+    <style>
+
+    div.fred {
+      font: 2em sans-serif;
+    }
+
+	body {
+	  font: 10px sans-serif;
+	  margin: 0;
+	}
+
+	path.line {
+	  fill: none;
+	  stroke: #666;
+	  stroke-width: 1.5px;
+	}
+
+	path.area {
+	  fill: #e7e7e7;
+	}
+
+	.axis {
+	  shape-rendering: crispEdges;
+	}
+
+	.x.axis line {
+	  stroke: #fff;
+	}
+
+	.x.axis .minor {
+	  stroke-opacity: .5;
+	}
+
+	.x.axis path {
+	  display: none;
+	}
+
+	.y.axis line, .y.axis path {
+	  fill: none;
+	  stroke: #000;
+	}
+
+</style>
+    <script type="text/javascript" src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script>
+
+
+d3.json("http://api.thingspeak.com/channels/62245/feed.json?results=8000", function(data) {
+  var svgWidth = 1000;
+  var svgHeight = 300;
+  var padding = 50;
+  var max_date = Date.parse(data.feeds[0].created_at);
+  var min_date = Date.parse(data.feeds[0].created_at);
+
+  var t = new Date();
+  var quiet = [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]];
+  var medians = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+  for (var i = 0; i < data.feeds.length; i++) {
+    m=Math.sqrt(data.feeds[i].field3*data.feeds[i].field3+ data.feeds[i].field4*data.feeds[i].field4+data.feeds[i].field5*data.feeds[i].field5);
+    var temp_d = Date.parse(data.feeds[i].created_at);
+    var hour = Math.floor((temp_d % 86400000) / 3600000 );
+    quiet[hour].push(m);
+  }
+  for( var j = 0; j < 24; j++ ) {
+     var mid = quiet[j].length/2;
+     if( mid == Math.floor(mid) ) {
+         medians[j] = (quiet[j][mid-1]+quiet[j][mid])/2;
+     } else {
+         medians[j] = quiet[j][Math.floor(mid)];
+     }
+  }
+
+
+
+  var m=Math.sqrt(data.feeds[0].field3*data.feeds[0].field3+ data.feeds[0].field4*data.feeds[0].field4+data.feeds[0].field5*data.feeds[0].field5);
+  var hour = Math.floor((min_date % 86400000) / 3600000 );
+
+  var max_magnitude = m;
+  var min_magnitude = m;
+  var max_corrected = 2500;
+  var min_corrected = 2500;
+
+  var currentDev;
+  var currentDate;
+
+  for (var i = 0; i < data.feeds.length; i++) {
+    m=Math.sqrt(data.feeds[i].field3*data.feeds[i].field3+ data.feeds[i].field4*data.feeds[i].field4+data.feeds[i].field5*data.feeds[i].field5);
+    var temp_d = Date.parse(data.feeds[i].created_at);
+    var temp_m = m;
+    hour = Math.floor((temp_d % 86400000) / 3600000 );
+    var temp_cor = Math.abs( m - medians[hour] )* 1000;
+    if ( temp_d >= max_date ) { max_date = temp_d; }
+    if ( temp_d <= min_date ) { min_date = temp_d; }
+    if ( temp_m >= max_magnitude ) { max_magnitude = temp_m; }
+    if ( temp_m <= min_magnitude ) { min_magnitude = temp_m; }
+    if ( temp_cor >= max_corrected ) { max_corrected = temp_cor; }
+    if ( temp_cor <= min_corrected ) { min_corrected = temp_cor; }
+    currentDate = temp_d;
+    currentDev = temp_cor;
+  }
+
+  var dmi = min_date-(max_date-min_date)*0.01;
+  var dma = max_date+(max_date-min_date)*0.01;
+  var xmi = parseFloat(min_magnitude,10)-(max_magnitude-min_magnitude)*0.01;
+  var xma = parseFloat(max_magnitude,10)+(max_magnitude-min_magnitude)*0.01;
+  var ymi = parseFloat(min_corrected,10)-(max_corrected-min_corrected)*0.01;
+  var yma = parseFloat(max_corrected,10)+(max_corrected-min_corrected)*0.01;
+  max_date = dma;
+  min_date = dmi;
+  max_magnitude = xma;
+  min_magnitude = xmi;
+  max_corrected = yma;
+  min_corrected = ymi;
+  var linearScaleDate = d3.time.scale().domain([min_date,max_date]).range([padding,svgWidth-padding]);
+  var linearScaleMagnitude = d3.scale.linear().domain([max_magnitude,min_magnitude]).range([padding,svgHeight-padding]);
+  var linearScaleCorrected = d3.scale.linear().domain([max_corrected,min_corrected]).range([padding,svgHeight-padding]);
+  console.log( currentDate );
+  console.log( currentDev);
+
+  var svgContainer = d3.select("#graph1").append("svg")
+                                      .attr("width", svgWidth)
+                                      .attr("height", svgHeight);
+  var circles = svgContainer.selectAll("circle")
+                            .data(data.feeds)
+                            .enter()
+                            .append("circle");//
+  var lineFunction = d3.svg.line()
+                           .x(function(d) { return linearScaleDate(Date.parse(d.created_at)); })
+                           .y(function(d) { return linearScaleMagnitude(Math.sqrt(d.field3*d.field3+d.field4*d.field4+d.field5*d.field5)); })
+                           .interpolate("linear");
+  var lineGraph = svgContainer.append("path")
+                              .attr("d", lineFunction(data.feeds))
+                              .attr("stroke", "blue")
+                              .attr("stroke-width", 1)
+                              .attr("fill", "none");
+  var circleAttributes = circles
+                         .attr("cx", function (d) { return linearScaleDate(Date.parse(d.created_at)); })
+                         .attr("cy", function (d) { return linearScaleMagnitude(Math.sqrt(d.field3*d.field3+d.field4*d.field4+d.field5*d.field5)); })
+                         .attr("r", 2 )
+                         .style("fill", "red" );
+  var dAxis = d3.svg.axis().scale(linearScaleDate);
+  var dAxisGroup = svgContainer.append("g")
+                                .attr("transform", "translate(0," + (svgHeight-padding) + ")")
+                                .attr("class", "y axis")
+                                .call(dAxis);
+  var xAxis = d3.svg.axis().scale(linearScaleMagnitude).ticks(4).orient("left");
+  var xAxisGroup = svgContainer.append("g")
+                                .attr("transform", "translate(" + padding + ",0)")
+                                .attr("class", "y axis")
+                                .call(xAxis);
+
+
+  var div = d3.select("#graph3").append("p").text("Current Deviation " + parseFloat(currentDev).toFixed(0) + " nTesla" );
+
+  var svgContainer = d3.select("#graph2").append("svg")
+                                      .attr("width", svgWidth)
+                                      .attr("height", svgHeight);
+  var circles = svgContainer.selectAll("circle")
+                            .data(data.feeds)
+                            .enter()
+                            .append("circle");//
+  var lineFunction = d3.svg.line()
+                           .x(function(d) { return linearScaleDate(Date.parse(d.created_at)); })
+                           .y(function(d) { var m = Math.sqrt(d.field3*d.field3+d.field4*d.field4+d.field5*d.field5);
+                                            var hour = Math.floor((Date.parse(d.created_at) % 86400000) / 3600000 );
+                                            return linearScaleCorrected( Math.abs( m - medians[hour])*1000 ); })
+                           .interpolate("linear");
+  var lineGraph = svgContainer.append("path")
+                              .attr("d", lineFunction(data.feeds))
+                              .attr("stroke", "blue")
+                              .attr("stroke-width", 1)
+                              .attr("fill", "none");
+  var circleAttributes = circles
+                         .attr("cx", function (d) { return linearScaleDate(Date.parse(d.created_at)); })
+                         .attr("cy", function(d) { var m = Math.sqrt(d.field3*d.field3+d.field4*d.field4+d.field5*d.field5);
+                                            var hour = Math.floor((Date.parse(d.created_at) % 86400000) / 3600000 );
+                                            return linearScaleCorrected( Math.abs( m - medians[hour] )*1000 );
+                                            })
+                         .attr("r", 2 )
+                         .style("fill", "red" );
+
+
+  var dAxis = d3.svg.axis().scale(linearScaleDate);
+  var dAxisGroup = svgContainer.append("g")
+                                .attr("transform", "translate(0," + (svgHeight-padding) + ")")
+                                .attr("class", "y axis")
+                                .call(dAxis);
+  var yAxis = d3.svg.axis().scale(linearScaleCorrected).ticks(4).orient("left");
+  var yAxisGroup = svgContainer.append("g")
+                                .attr("transform", "translate(" + padding + ",0)")
+                                .attr("class", "y axis")
+                                .call(yAxis);
+
+
+}
+);
+
+
+
+
+
+</script>
+</head>
+  <body>
+<div  id = "Overview">
+  <h1>   Magnetic field Amplitude data from Cork  - last 8000 data points    </h1>
+  
+</div>
+
+<TABLE ALIGN="center" BORDER=2 CELLSPACING=0 CELLPADDING=0 >
+<TR>
+	<TD> <div class=fred id=graph3> </div></TD>
+</TR>
+<!--TR>
+	<TD> <div id=graph1> </div> <h2> Graph 1 : Temperature Data</h2></TD>
+</TR-->
+<TR>
+	<TD> <div id=graph2> </div><h2> Deviation from normal (quiet day)</h2></TD>
+</TR>
+
+</TABLE>
+
+
+
+
+  </body>
+<footer>  
+  <p>  <a href="http://www.ideb.eu.pn/" target="_top">Return to Home Page</a> <br>
+   Issues?  Please send an email to <a href="mailto:Ide_Bradley@hotmail.com"> this address</a> <p>
+</footer> 
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>MagnetometerXYZ</title>
+	<link href="SensorStyle.css" rel="stylesheet" type="text/css" />
+    <style>
+
+	body {
+	  background-color:  #99FFFF;
+	  font: 10px sans-serif;
+	  margin: 0;
+	}
+
+	path.line {
+	  fill: none;
+	  stroke: #666;
+	  stroke-width: 1.5px;
+	}
+
+	path.area {
+	  fill: #e7e7e7;
+	}
+
+	.axis {
+	  shape-rendering: crispEdges;
+	}
+
+	.x.axis line {
+	  stroke: #fff;
+	}
+
+	.x.axis .minor {
+	  stroke-opacity: .5;
+	}
+
+	.x.axis path {
+	  display: none;
+	}
+
+	.y.axis line, .y.axis path {
+	  fill: none;
+	  stroke: #000;
+	}
+
+</style>
+    <script type="text/javascript" src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script>
+
+
+d3.json("http://api.thingspeak.com/channels/53977/feed.json?days=3", function(data) {
+  var svgWidth = 1000;
+  var svgHeight = 300;
+  var padding = 50;
+  var max_d = Date.parse(data.feeds[0].created_at);
+  var min_d = Date.parse(data.feeds[0].created_at);
+  var max_x = parseFloat(data.feeds[0].field1);
+  var min_x = parseFloat(data.feeds[0].field1);
+  var max_y = parseFloat(data.feeds[0].field2);
+  var min_y = parseFloat(data.feeds[0].field2);
+  
+  var t = new Date();
+  console.log( t);
+  for (var i = 0; i < data.feeds.length; i++) {
+    var temp_d = Date.parse(data.feeds[i].created_at);
+   
+    var temp_x = parseFloat(data.feeds[i].field1);
+    var temp_y = parseFloat(data.feeds[i].field2);
+   
+    if ( temp_d >= max_d ) { max_d = temp_d; }
+    if ( temp_d <= min_d ) { min_d = temp_d; }
+    if ( temp_x >= max_x ) { max_x = temp_x; }
+    if ( temp_x <= min_x ) { min_x = temp_x; }
+    if ( temp_y >= max_y ) { max_y = temp_y; }
+    if ( temp_y <= min_y ) { min_y = temp_y; }
+    
+  }
+  var dmi = min_d-(max_d-min_d)*0.01;
+  var dma = max_d+(max_d-min_d)*0.01;
+  var xmi = parseFloat(min_x,10)-(max_x-min_x)*0.01;
+  var xma = parseFloat(max_x,10)+(max_x-min_x)*0.01;
+  var ymi = parseFloat(min_y,10)-(max_y-min_y)*0.01;
+  var yma = parseFloat(max_y,10)+(max_y-min_y)*0.01;
+  
+  max_d = dma;
+  min_d = dmi;
+  max_x = xma;
+  min_x = xmi;
+  max_y = yma;
+  min_y = ymi;
+  
+  var linearScaleD = d3.time.scale().domain([min_d,max_d]).range([padding,svgWidth-padding]);
+  var linearScaleX = d3.scale.linear().domain([max_x,min_x]).range([padding,svgHeight-padding]);
+  var linearScaleY = d3.scale.linear().domain([max_y,min_y]).range([padding,svgHeight-padding]);
+  
+  
+  var svgContainer = d3.select("#graph1").append("svg")
+                                      .attr("width", svgWidth)
+                                      .attr("height", svgHeight);
+  var circles = svgContainer.selectAll("circle")
+                            .data(data.feeds)
+                            .enter()
+                            .append("circle");//
+  var lineFunction = d3.svg.line()
+                           .x(function(d) { return linearScaleD(Date.parse(d.created_at)); })
+                           .y(function(d) { return linearScaleX(d.field1); })
+                           .interpolate("linear");
+  var lineGraph = svgContainer.append("path")
+                              .attr("d", lineFunction(data.feeds))
+                              .attr("stroke", "blue")
+                              .attr("stroke-width", 1)
+                              .attr("fill", "none");
+  var circleAttributes = circles
+                         .attr("cx", function (d) { return linearScaleD(Date.parse(d.created_at)); })
+                         .attr("cy", function (d) { return linearScaleX(d.field1); })
+                         .attr("r", 2 )
+                         .style("fill", "red" );
+  var dAxis = d3.svg.axis().scale(linearScaleD).tickFormat(d3.time.format("%I:%M"));
+  var dAxisGroup = svgContainer.append("g")
+                                .attr("transform", "translate(0," + (svgHeight-padding) + ")")
+                                .attr("class", "y axis")
+                                .call(dAxis);
+  var xAxis = d3.svg.axis().scale(linearScaleX).ticks(4).orient("left");
+  var xAxisGroup = svgContainer.append("g")
+                                .attr("transform", "translate(" + padding + ",0)")
+                                .attr("class", "y axis")
+                                .call(xAxis);
+
+  var svgContainer = d3.select("#graph2").append("svg")
+                                      .attr("width", svgWidth)
+                                      .attr("height", svgHeight);
+  var circles = svgContainer.selectAll("circle")
+                            .data(data.feeds)
+                            .enter()
+                            .append("circle");//
+  var lineFunction = d3.svg.line()
+                           .x(function(d) { return linearScaleD(Date.parse(d.created_at)); })
+                           .y(function(d) { return linearScaleY(d.field2); })
+                           .interpolate("linear");
+  var lineGraph = svgContainer.append("path")
+                              .attr("d", lineFunction(data.feeds))
+                              .attr("stroke", "blue")
+                              .attr("stroke-width", 1)
+                              .attr("fill", "none");
+  var circleAttributes = circles
+                         .attr("cx", function (d) { return linearScaleD(Date.parse(d.created_at)); })
+                         .attr("cy", function (d) { return linearScaleY(d.field2); })
+                         .attr("r", 2 )
+                         .style("fill", "red" );
+  var dAxis = d3.svg.axis().scale(linearScaleD).tickFormat(d3.time.format("%I:%M"));
+  var dAxisGroup = svgContainer.append("g")
+                                .attr("transform", "translate(0," + (svgHeight-padding) + ")")
+                                .attr("class", "y axis")
+                                .call(dAxis);
+  var yAxis = d3.svg.axis().scale(linearScaleY).ticks(4).orient("left");
+  var yAxisGroup = svgContainer.append("g")
+                                .attr("transform", "translate(" + padding + ",0)")
+                                .attr("class", "y axis")
+                                .call(yAxis);
+
+  
+
+}
+
+
+
+);
+
+
+
+
+
+</script>
+</head>
+  <body>
+<div  id = "Overview">
+  <h1>  Pressure and Temp data from Dublin  - last three days  </h1>
+  
+</div>
+   
+
+<TABLE ALIGN="center" BORDER=2 CELLSPACING=0 CELLPADDING=0 >
+
+<TR>
+	<TD> <div id=graph1> </div> <h2> Graph 1 : Temperature </h2></TD>
+</TR>
+<TR>
+	<TD> <div id=graph2> </div><h2> Graph 2 : Pressure </h2></TD>
+</TR>
+
+</TABLE>
+
+
+
+
+
+
+  </body>
+  <footer>  
+  <p>  <a href="http://www.ideb.eu.pn/" target="_top">Return to Home Page</a> <br>
+   Issues?  Please send an email to <a href="mailto:Ide_Bradley@hotmail.com"> this address</a> <p>
+</footer> 
+</html>

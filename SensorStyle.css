@@ -1,0 +1,60 @@
+body {
+       background-color: aqua;
+     }
+
+p{
+          color:white;
+          margin-left: 40px;
+ } 
+ 
+img {
+      width:33%; 
+	  height:512px;
+}
+#Overview { 
+	background-image: url("aurora2.jpg");
+	background-color: navy; 
+	color:rgb(130,255,255); 
+	border:1px solid blue;
+	text-align:left; 
+	height:100px;
+}
+footer{ 
+	background-color: navy; 
+	color:rgb(130,255,255); 
+	border:1px solid blue;
+	text-align:center; 
+	height:80px;
+}
+
+#tableformat {
+	border: 1px solid #DFDFDF;
+	background-color: #F9F9F9;
+	width: 100%;
+	-moz-border-radius: 3px;
+	-webkit-border-radius: 3px;
+	border-radius: 3px;
+	font-family: Arial,"Bitstream Vera Sans",Helvetica,Verdana,sans-serif;
+	color: #333;
+}
+#tableformat td, #tableformat th {
+	border-top-color: white;
+	border-bottom: 1px solid #DFDFDF;
+	color: #555;
+}
+#tableformat th {
+	text-shadow: rgba(255, 255, 255, 0.796875) 0px 1px 0px;
+	font-family: Georgia,"Times New Roman","Bitstream Charter",Times,serif;
+	font-weight: normal;
+	padding: 7px 7px 8px;
+	text-align: left;
+	line-height: 1.3em;
+	font-size: 14px;
+}
+#tableformat td {
+	font-size: 12px;
+	padding: 4px 7px 2px;
+	vertical-align: top;
+}
+
+
